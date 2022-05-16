@@ -1,16 +1,20 @@
 import { range } from './animationHelpers';
+import { BasicEnemy } from './enemies';
+import { Player } from './player';
+import type { Projectile } from './weapons';
 
-type KeyState = Record<string, boolean>;
+export type KeyState = Record<string, boolean>;
 
-type MouseState = Record<number, { x: number; y: number }>;
+export type MouseState = Record<number, { x: number; y: number }>;
 
-export default class Game {
-	canvas: HTMLCanvasElement;
+const Game = {
+	canvas: HTMLCanvasElement,
 	context: CanvasRenderingContext2D;
 
 	worldState: WorldState;
+	createInterfaceWindow: any;
 
-	constructor(canvas: HTMLCanvasElement) {
+	constructor(canvas: HTMLCanvasElement, createInterfaceWindow: any) {
 		this.canvas = canvas;
 		const context = canvas.getContext('2d');
 		if (!context) {
@@ -24,20 +28,23 @@ export default class Game {
 		canvas.height = innerHeight;
 
 		this.worldState = new WorldState(this.canvas);
+		this.createInterfaceWindow = createInterfaceWindow;
+		this.render(true);
+		createInterfaceWindow({ type: 'start', start: () => this.start() });
 	}
 
 	start() {
 		this.render();
 	}
 
-	render() {
+	render(lastFrame = false) {
 		this.context.clearRect(0, 0, this.canvas.width, this.canvas.height);
 
 		this.context.fillStyle = '#f52432';
 		this.context.fillRect(0, 0, this.canvas.width, this.canvas.height);
 
 		const status = this.worldState.updateAndDraw(this.keyState, this.mouseState, this.context);
-		if (status !== 'dead') {
+		if (status !== 'dead' && !lastFrame) {
 			requestAnimationFrame(() => this.render());
 		}
 	}
@@ -75,7 +82,9 @@ export default class Game {
 	}
 }
 
-type TUpdateStatus = 'dead' | 'alive';
+export default Game;
+
+export type TUpdateStatus = 'dead' | 'alive';
 
 class WorldState {
 	player: Player;
@@ -134,209 +143,5 @@ class WorldState {
 
 		if (this.player.health <= 0) return 'dead';
 		return 'alive';
-	}
 }
-
-class MovableEntity {
-	x: number;
-	y: number;
-	radius: number;
-	color: string;
-	drawers: Array<(cc: CanvasRenderingContext2D) => void>;
-
-	constructor(params: { x: number; y: number; radius?: number; color?: string }) {
-		this.x = params.x;
-		this.y = params.y;
-		this.radius = params.radius || 5;
-		this.color = params.color || 'white';
-		this.drawers = [];
-		this.drawers.push(this.drawCircle);
-	}
-
-	draw(cc: CanvasRenderingContext2D) {
-		this.drawers.forEach((fn) => fn.bind(this)(cc));
-	}
-
-	drawCircle(cc: CanvasRenderingContext2D) {
-		cc.beginPath();
-		cc.arc(this.x, this.y, this.radius, 0, Math.PI * 2, false);
-		cc.fillStyle = this.color;
-		cc.fill();
-	}
-}
-
-class Weapon {
-	damage: number;
-	velocity: number;
-	coolDown: number;
-	lastShot: Date;
-	constructor() {
-		this.damage = 25;
-		this.velocity = 15;
-		this.coolDown = 200;
-		this.lastShot = new Date();
-	}
-
-	shoot(xOrigin: number, yOrigin: number, angle: number) {
-		const now = new Date();
-		if (now.getTime() - this.lastShot.getTime() < this.coolDown) {
-			return [];
-		}
-
-		this.lastShot = now;
-
-		const projectiles = [
-			new Projectile({
-				x: xOrigin,
-				y: yOrigin,
-				velocty: { x: Math.cos(angle) * this.velocity, y: Math.sin(angle) * this.velocity },
-				damage: this.damage
-			})
-		];
-		return projectiles;
-	}
-}
-
-class Player extends MovableEntity {
-	weapon: Weapon;
-	speed: number;
-	health: number;
-	maxHealth: number;
-
-	constructor(params: { x: number; y: number }) {
-		super({ ...params, radius: 25 });
-
-		this.speed = 7;
-		this.maxHealth = 100;
-		this.health = this.maxHealth;
-
-		this.weapon = new Weapon();
-		this.drawers.push(this.drawHp);
-	}
-
-	update(keyState: KeyState, mouseState: MouseState) {
-		if (keyState['KeyA']) {
-			this.x -= this.speed;
-		}
-		if (keyState['KeyD']) {
-			this.x += this.speed;
-		}
-
-		if (keyState['KeyS']) {
-			this.y += this.speed;
-		}
-		if (keyState['KeyW']) {
-			this.y -= this.speed;
-		}
-
-		if (mouseState[0]) {
-			return this.shoot(mouseState[0].x, mouseState[0].y);
-		}
-	}
-
-	shoot(xTarget: number, yTarget: number) {
-		const angle = Math.atan2(yTarget - this.y, xTarget - this.x);
-		return this.weapon.shoot(this.x, this.y, angle);
-	}
-
-	// TODO: GENERALIZE
-	drawHp(cc: CanvasRenderingContext2D) {
-		const w = 50;
-		const h = 3;
-		cc.beginPath();
-		cc.fillStyle = 'rgba(50, 50, 50, 0.2)';
-		cc.fillRect(this.x - w / 2, this.y - this.radius - h / 2 - 7, w, h);
-
-		cc.beginPath();
-		cc.fillStyle = 'rgba(242, 242, 242, 0.5)';
-		cc.fillRect(
-			this.x - w / 2,
-			this.y - this.radius - h / 2 - 7,
-			w * (this.health / this.maxHealth),
-			h
-		);
-	}
-}
-
-class BasicEnemy extends MovableEntity {
-	speed: number;
-	health: number;
-	maxHealth: number;
-	damage: number;
-
-	constructor(params: { x: number; y: number; radius?: number; color?: string }) {
-		super(params);
-		this.speed = 5;
-		this.maxHealth = 100;
-		this.damage = 10;
-		this.health = this.maxHealth;
-		this.drawers.push(this.drawHp);
-	}
-
-	update(player: Player): TUpdateStatus {
-		if (this.health <= 0) return 'dead';
-
-		const angle = Math.atan2(player.y - this.y, player.x - this.x);
-		this.x += Math.cos(angle) * this.speed;
-		this.y += Math.sin(angle) * this.speed;
-		const distance = Math.hypot(this.x - player.x, this.y - player.y);
-		const bound = this.radius + player.radius;
-		if (distance < bound) {
-			player.health -= this.damage;
-			return 'dead';
-		}
-
-		return 'alive';
-	}
-
-	drawHp(cc: CanvasRenderingContext2D) {
-		const w = 50;
-		const h = 3;
-		cc.beginPath();
-		cc.fillStyle = 'rgba(50, 50, 50, 0.2)';
-		cc.fillRect(this.x - w / 2, this.y - this.radius - h / 2 - 7, w, h);
-
-		cc.beginPath();
-		cc.fillStyle = 'rgba(242, 242, 242, 0.5)';
-		cc.fillRect(
-			this.x - w / 2,
-			this.y - this.radius - h / 2 - 7,
-			w * (this.health / this.maxHealth),
-			h
-		);
-	}
-}
-
-class Projectile extends MovableEntity {
-	velocity: { x: number; y: number };
-	damage: number;
-
-	constructor(params: {
-		x: number;
-		y: number;
-		velocty: { x: number; y: number };
-		radius?: number;
-		damage: number;
-	}) {
-		super(params);
-		this.velocity = params.velocty;
-		this.damage = params.damage;
-	}
-
-	update(enemies: BasicEnemy[]): TUpdateStatus {
-		this.x += this.velocity.x;
-		this.y += this.velocity.y;
-
-		for (let i = 0; i < enemies.length; i++) {
-			const enemy = enemies[i];
-			const distance = Math.hypot(this.x - enemy.x, this.y - enemy.y);
-			const bound = this.radius + enemy.radius;
-			if (distance < bound) {
-				enemy.health -= this.damage;
-				return 'dead';
-			}
-		}
-
-		return 'alive';
-	}
 }

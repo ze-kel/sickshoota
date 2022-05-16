@@ -4,12 +4,18 @@
 
 	let canvas: HTMLCanvasElement;
 
-	let game: Game;
+	let interfaceWindow: any = null;
+
+	const createInterfaceWindow = (obj: any) => {
+		interfaceWindow = obj;
+	};
+
+	const callAndClose = (fn: any) => {
+		fn();
+		interfaceWindow = null;
+	};
 
 	onMount(() => {
-		game = new Game(canvas);
-		game.start();
-
 		addEventListener('keydown', keydown);
 		addEventListener('keyup', keyup);
 
@@ -19,27 +25,38 @@
 	});
 
 	const keydown = (e: KeyboardEvent) => {
-		game.keyDown(e);
+		Game.keyDown(e);
 	};
 
 	const keyup = (e: KeyboardEvent) => {
-		game.keyUp(e);
+		Game.keyUp(e);
 	};
 
 	const mouseDown = (e: MouseEvent) => {
-		game.mouseDown(e);
+		Game.mouseDown(e);
 	};
 
 	const mouseUp = (e: MouseEvent) => {
-		game.mouseUp(e);
+		Game.mouseUp(e);
 	};
 
 	const mouseMove = (e: MouseEvent) => {
-		game.mouseMove(e);
+		Game.mouseMove(e);
 	};
 </script>
 
 <div class="wrapper">
+	{#if interfaceWindow}
+		<div class="interfaceOverlay">
+			{#if interfaceWindow.type === 'start'}
+				<div class="interfaceWindow start">
+					<h1 class="title">SICKSHOOTA</h1>
+					<button class="button" on:click={() => callAndClose(interfaceWindow.start)}>START</button>
+				</div>
+			{/if}
+		</div>
+	{/if}
+
 	<canvas class="canvas" bind:this={canvas} />
 </div>
 
@@ -48,5 +65,29 @@
 		height: 100%;
 		width: 100%;
 		overflow: hidden;
+		font-family: sans-serif;
+		color: white;
+	}
+
+	.interfaceOverlay {
+		width: 100%;
+		height: 100%;
+		position: absolute;
+		display: flex;
+		align-items: center;
+		justify-content: flex-start;
+		padding: 10%;
+		box-sizing: border-box;
+	}
+
+	.button {
+		font-size: 25px;
+		background: none;
+		border: none;
+		color: white;
+		font-family: inherit;
+		text-decoration: underline;
+		cursor: pointer;
+		padding: 0;
 	}
 </style>

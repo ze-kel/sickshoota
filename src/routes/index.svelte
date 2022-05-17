@@ -1,21 +1,20 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import Game from '$lib/main';
+	import type { GameState } from '$lib/main';
 
 	let canvas: HTMLCanvasElement;
 
-	let interfaceWindow: any = null;
+	let game: Game;
 
-	const createInterfaceWindow = (obj: any) => {
-		interfaceWindow = obj;
-	};
+	let gameState: GameState;
 
-	const callAndClose = (fn: any) => {
-		fn();
-		interfaceWindow = null;
+	const updateGameState = (state: GameState) => {
+		gameState = state;
 	};
 
 	onMount(() => {
+		game = new Game(canvas, updateGameState);
 		addEventListener('keydown', keydown);
 		addEventListener('keyup', keyup);
 
@@ -25,33 +24,45 @@
 	});
 
 	const keydown = (e: KeyboardEvent) => {
-		Game.keyDown(e);
+		game.keyDown(e);
 	};
 
 	const keyup = (e: KeyboardEvent) => {
-		Game.keyUp(e);
+		game.keyUp(e);
 	};
 
 	const mouseDown = (e: MouseEvent) => {
-		Game.mouseDown(e);
+		game.mouseDown(e);
 	};
 
 	const mouseUp = (e: MouseEvent) => {
-		Game.mouseUp(e);
+		game.mouseUp(e);
 	};
 
 	const mouseMove = (e: MouseEvent) => {
-		Game.mouseMove(e);
+		game.mouseMove(e);
 	};
 </script>
 
 <div class="wrapper">
-	{#if interfaceWindow}
+	{#if gameState}
 		<div class="interfaceOverlay">
-			{#if interfaceWindow.type === 'start'}
+			{#if gameState.state === 'notStarted'}
 				<div class="interfaceWindow start">
 					<h1 class="title">SICKSHOOTA</h1>
-					<button class="button" on:click={() => callAndClose(interfaceWindow.start)}>START</button>
+					<button class="button" on:click={() => game.start()}>START</button>
+				</div>
+			{/if}
+			{#if gameState.state === 'paused'}
+				<div class="interfaceWindow start">
+					<h1 class="title">PAUSED</h1>
+					<button class="button" on:click={() => game.start()}>RESUME</button>
+				</div>
+			{/if}
+			{#if gameState.state === 'levelUp'}
+				<div class="interfaceWindow start">
+					<h1 class="title">LEVELUP</h1>
+					<button class="button" on:click={() => game.start()}>RESUME</button>
 				</div>
 			{/if}
 		</div>

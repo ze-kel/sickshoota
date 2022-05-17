@@ -1,12 +1,13 @@
-import { MovableEntity } from "./generics";
-import type { TUpdateStatus } from "./main";
-import type { Player } from "./player";
+import { MovableEntity } from './generics';
+import type { TUpdateStatus } from './main';
+import type { Player } from './player';
 
 export class BasicEnemy extends MovableEntity {
 	speed: number;
 	health: number;
 	maxHealth: number;
 	damage: number;
+	scoreWeight: number;
 
 	constructor(params: { x: number; y: number; radius?: number; color?: string }) {
 		super(params);
@@ -14,6 +15,7 @@ export class BasicEnemy extends MovableEntity {
 		this.maxHealth = 100;
 		this.damage = 10;
 		this.health = this.maxHealth;
+		this.scoreWeight = 10;
 		this.drawers.push(this.drawHp);
 	}
 

@@ -1,5 +1,5 @@
 import { MovableEntity } from './generics';
-import type { TUpdateStatus } from './main';
+import type { TCameraPosition, TUpdateStatus } from './main';
 import type { Player } from './player';
 
 export class BasicEnemy extends MovableEntity {
@@ -35,20 +35,18 @@ export class BasicEnemy extends MovableEntity {
 		return 'alive';
 	}
 
-	drawHp(cc: CanvasRenderingContext2D) {
+	drawHp(cc: CanvasRenderingContext2D, camera: TCameraPosition) {
 		const w = 50;
 		const h = 3;
 		cc.beginPath();
 		cc.fillStyle = 'rgba(50, 50, 50, 0.2)';
-		cc.fillRect(this.x - w / 2, this.y - this.radius - h / 2 - 7, w, h);
+		const x = this.x - camera.x[0] - w / 2;
+		const y = this.y - camera.y[0] - this.radius - h / 2 - 7;
+
+		cc.fillRect(x, y, w, h);
 
 		cc.beginPath();
 		cc.fillStyle = 'rgba(242, 242, 242, 0.5)';
-		cc.fillRect(
-			this.x - w / 2,
-			this.y - this.radius - h / 2 - 7,
-			w * (this.health / this.maxHealth),
-			h
-		);
+		cc.fillRect(x, y, w * (this.health / this.maxHealth), h);
 	}
 }

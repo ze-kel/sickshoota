@@ -41,9 +41,9 @@ export class Player extends MovableEntity {
 			this.y -= this.speed;
 		}
 
-		const minXY = 0 + this.radius / 2;
-		const maxX = width - this.radius / 2;
-		const maxY = height - this.radius / 2;
+		const minXY = 0 + this.radius;
+		const maxX = width - this.radius;
+		const maxY = height - this.radius;
 
 		this.x = clamp(this.x, minXY, maxX);
 		this.y = clamp(this.y, minXY, maxY);

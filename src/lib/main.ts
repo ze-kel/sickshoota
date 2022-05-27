@@ -1,4 +1,4 @@
-import { clamp, range } from './animationHelpers';
+import { range } from './animationHelpers';
 import { BasicEnemy } from './enemies';
 import { Player } from './player';
 import type { Projectile } from './weapons';
@@ -144,37 +144,57 @@ class WorldState {
 	constructor(canvas: HTMLCanvasElement, gameState: GameState) {
 		this.projectiles = [];
 		this.enemies = [];
-		this.player = new Player({ x: gameState.screenW / 2, y: gameState.screenH / 2 });
 		this.gameState = gameState;
-		this.width = 1000;
-		this.height = 1000;
+		this.width = 3000;
+		this.height = 2000;
+
+		this.player = new Player({ x: this.width / 2, y: this.height / 2 });
 		this.cameraPosition = this.updateCamera();
 		setInterval(() => this.spawnEnemies(), 1000);
 	}
 
 	spawnEnemies() {
 		if (this.gameState.state !== 'running') return;
-		const xPos = range(0, 1, 0, this.width, Math.random());
-		const yPos = range(0, 1, 0, this.width, Math.random());
+
+		const isYAxis = Math.random() > 0.5;
+		const isMaximumSide = Math.random() > 0.5;
+		const offset = 100;
+
+		let yPos, xPos;
+
+		if (isYAxis) {
+			yPos = range(0, 1, 0, this.height, Math.random());
+			xPos = isMaximumSide ? this.width + offset : 0 - offset;
+		} else {
+			xPos = range(0, 1, 0, this.width, Math.random());
+			yPos = isMaximumSide ? this.height + offset : 0 - offset;
+		}
+
 		const newEnemy = new BasicEnemy({ x: xPos, y: yPos, color: 'black', radius: 25 });
 		this.enemies.push(newEnemy);
 	}
 
 	updateCamera(): TCameraPosition {
-		// NOT FINISHED
-		const cameraStartX = clamp(this.player.x - this.gameState.screenW, 0, this.width);
-		console.log('startX', cameraStartX);
-		const cameraEndX = cameraStartX + this.gameState.screenW;
-		const cameraStartY = clamp(
-			this.player.y - this.gameState.screenH / 2,
-			0,
-			this.height - this.gameState.screenH / 2
-		);
-		const cameraEndY = cameraStartY + this.gameState.screenH;
+		const getPositions = (playerCoord: number, world: number, screen: number): [number, number] => {
+			if (world <= screen) {
+				const start = world / 2 - screen / 2;
+				return [start, start + screen];
+			} else {
+				const startBase = Math.max(playerCoord - screen / 2, 0);
+				const endBase = startBase + screen;
+
+				if (endBase > world) {
+					const offset = endBase - world;
+					return [startBase - offset, endBase - offset];
+				}
+
+				return [startBase, endBase];
+			}
+		};
 
 		const camera: TCameraPosition = {
-			x: [cameraStartX, cameraEndX],
-			y: [cameraStartY, cameraEndY]
+			x: getPositions(this.player.x, this.width, this.gameState.screenW),
+			y: getPositions(this.player.y, this.height, this.gameState.screenH)
 		};
 
 		this.cameraPosition = camera;
@@ -242,8 +262,9 @@ class WorldState {
 		ctx.fillRect(0, 0, this.gameState.screenW, this.gameState.screenH);
 
 		const getLinesPosition = (start: number, end: number, space: number) => {
-			const arr = [];
 			const base = Math.floor(start / space) * space - start;
+
+			const arr = [base];
 			for (let i = base + space; i <= end - start; i += space) {
 				arr.push(i);
 			}
@@ -251,19 +272,48 @@ class WorldState {
 		};
 
 		const lineThickness = 1;
-		const spread = 150;
+		const spread = 100;
 		const lineColor = '#cf131f';
-		const linesX = getLinesPosition(this.cameraPosition.x[0], this.cameraPosition.x[1], spread);
-		const linesY = getLinesPosition(this.cameraPosition.y[0], this.cameraPosition.y[1], spread);
 
+		const linesX = getLinesPosition(
+			Math.max(this.cameraPosition.x[0], 0),
+			Math.min(this.cameraPosition.x[1], this.width),
+			spread
+		);
+
+		const linesY = getLinesPosition(
+			Math.max(this.cameraPosition.y[0], 0),
+			Math.min(this.cameraPosition.y[1], this.height),
+			spread
+		);
+
+		const xOffset = Math.max(0, 0 - this.cameraPosition.x[0]);
+		const yOffset = Math.max(0, 0 - this.cameraPosition.y[0]);
+
+		// Vertical
 		linesX.forEach((pos) => {
 			ctx.fillStyle = lineColor;
-			ctx.fillRect(pos - lineThickness, 0, lineThickness, this.gameState.screenH);
+			const startPoint = Math.max(0, this.cameraPosition.y[0]);
+			const endPoint = Math.min(this.height, this.cameraPosition.y[1]);
+			ctx.fillRect(
+				pos - lineThickness + xOffset,
+				0 + yOffset,
+				lineThickness,
+				endPoint - startPoint
+			);
 		});
 
+		// Horizontal
 		linesY.forEach((pos) => {
 			ctx.fillStyle = lineColor;
-			ctx.fillRect(0, pos - lineThickness, this.gameState.screenW, lineThickness);
+			const startPoint = Math.max(0, this.cameraPosition.x[0]);
+			const endPoint = Math.min(this.width, this.cameraPosition.x[1]);
+			ctx.fillRect(
+				0 + xOffset,
+				pos - lineThickness + yOffset,
+				endPoint - startPoint,
+				lineThickness
+			);
 		});
 	}
 }
